@@ -1,1 +1,1 @@
-# RS2---eCommerce-app
+# RS2 eCommerce app
