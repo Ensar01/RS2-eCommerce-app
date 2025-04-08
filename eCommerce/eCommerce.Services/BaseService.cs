@@ -1,133 +1,76 @@
-﻿using eCommerce.Model.Requests;
-using eCommerce.Model.Responses;
-using eCommerce.Model.SearchObjects;
 using eCommerce.Services.Database;
 using Microsoft.EntityFrameworkCore;
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using eCommerce.Model.Responses;
+using eCommerce.Model.Requests;
+using eCommerce.Model.SearchObjects;
+using System.Linq;
+using System;
+using MapsterMapper;
 
 namespace eCommerce.Services
 {
-    public class BaseService<T, TSearch> : IService<T, TSearch> where T: class where TSearch : class
+    public abstract class BaseService<T, TSearch, TEntity> : IService<T, TSearch> where T : class where TSearch : BaseSearchObject where TEntity : class
     {
         private readonly eCommerceDbContext _context;
+        protected readonly IMapper _mapper;
 
-        public BaseService(eCommerceDbContext context)
+        public BaseService(eCommerceDbContext context, IMapper mapper)
         {
             _context = context;
-        }
-        {
-            throw new NotImplementedException();
+            _mapper = mapper;
         }
 
-        public virtual async Task<List<T?>> GetByIdAsync(int id)
+        public virtual async Task<PagedResult<T>> GetAsync(TSearch search)
         {
-            throw new NotImplementedException();
-        }
-        public async Task<List<ProductTypeResponse>> GetAsync(ProductTypeSearchObject search)
-        {
-            var query = _context.ProductTypes.AsQueryable();
+            var query = _context.Set<TEntity>().AsQueryable();
+            query = ApplyFilter(query, search);
 
-            if (!string.IsNullOrEmpty(search.Name))
-            {
-                query = query.Where(pt => pt.Name.Contains(search.Name));
+            int? totalCount = null;
+            if (search.IncludeTotalCount){
+                totalCount = await query.CountAsync();
             }
 
-            if (!string.IsNullOrEmpty(search.FTS))
+            if (!search.RetrieveAll)
             {
-                query = query.Where(pt =>
-                    pt.Name.Contains(search.FTS) ||
-                    (pt.Description != null && pt.Description.Contains(search.FTS)));
+                if (search.Page.HasValue)
+                {
+                    query = query.Skip(search.Page.Value * search.PageSize.Value);
+                }
+                if (search.PageSize.HasValue)
+                {
+                    query = query.Take(search.PageSize.Value);
+                }
             }
 
-            var productTypes = await query.ToListAsync();
-            return productTypes.Select(MapToResponse).ToList();
-        }
-
-        public async Task<ProductTypeResponse?> GetByIdAsync(int id)
-        {
-            var productType = await _context.ProductTypes.FindAsync(id);
-            return productType != null ? MapToResponse(productType) : null;
-        }
-
-        public async Task<ProductTypeResponse> CreateAsync(ProductTypeUpsertRequest request)
-        {
-            // Check for duplicate name
-            if (await _context.ProductTypes.AnyAsync(pt => pt.Name == request.Name))
-            {
-                throw new InvalidOperationException("A product type with this name already exists.");
-            }
-
-            var productType = new ProductType
-            {
-                Name = request.Name,
-                Description = request.Description,
-                IsActive = request.IsActive,
-                CreatedAt = DateTime.UtcNow
+            
+            
+            var list = await query.ToListAsync();
+            return new PagedResult<T>
+            {   
+                Items = list.Select(MapToResponse).ToList(),
+                TotalCount = totalCount
             };
-
-            _context.ProductTypes.Add(productType);
-            await _context.SaveChangesAsync();
-            return MapToResponse(productType);
         }
 
-        public async Task<ProductTypeResponse?> UpdateAsync(int id, ProductTypeUpsertRequest request)
+        protected virtual IQueryable<TEntity> ApplyFilter(IQueryable<TEntity> query, TSearch search)
         {
-            var productType = await _context.ProductTypes.FindAsync(id);
-            if (productType == null)
+            return query;
+        }
+
+        public virtual async Task<T?> GetByIdAsync(int id)
+        {
+            var entity = await _context.Set<TEntity>().FindAsync(id);
+            if (entity == null)
                 return null;
-
-            // Check for duplicate name (excluding current product type)
-            if (await _context.ProductTypes.AnyAsync(pt => pt.Name == request.Name && pt.Id != id))
-            {
-                throw new InvalidOperationException("A product type with this name already exists.");
-            }
-
-            productType.Name = request.Name;
-            productType.Description = request.Description;
-            productType.IsActive = request.IsActive;
-            productType.UpdatedAt = DateTime.UtcNow;
-
-            await _context.SaveChangesAsync();
-            return MapToResponse(productType);
+            
+            return MapToResponse(entity);
         }
 
-        public async Task<bool> DeleteAsync(int id)
-        {
-            var productType = await _context.ProductTypes.FindAsync(id);
-            if (productType == null)
-                return false;
-
-            // Check if there are any products using this product type
-            if (await _context.Products.AnyAsync(p => p.ProductTypeId == id))
-            {
-                throw new InvalidOperationException("Cannot delete a product type that is being used by products.");
-            }
-
-            _context.ProductTypes.Remove(productType);
-            await _context.SaveChangesAsync();
-            return true;
+        protected virtual T MapToResponse(TEntity entity) {
+            return _mapper.Map<T>(entity);
         }
-
-        private ProductTypeResponse MapToResponse(ProductType productType)
-        {
-            return new ProductTypeResponse
-            {
-                Id = productType.Id,
-                Name = productType.Name,
-                Description = productType.Description,
-                IsActive = productType.IsActive,
-                CreatedAt = productType.CreatedAt,
-                UpdatedAt = productType.UpdatedAt
-            };
-        }
-
-       
-
         
     }
 } 
-

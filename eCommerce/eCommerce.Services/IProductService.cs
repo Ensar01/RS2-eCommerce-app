@@ -6,12 +6,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using eCommerce.Model.Requests;
 
 namespace eCommerce.Services
 {
-    public interface IProductService
+    public interface IProductService : ICRUDService<ProductResponse, ProductSearchObject, ProductInsertRequest, ProductUpdateRequest>
     {
-        Task<List<ProductResponse>> GetAsync(ProductSearchObject search);
-        Task<ProductResponse?> GetByIdAsync(int id);
     }
 }

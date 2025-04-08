@@ -8,58 +8,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-
+using eCommerce.Model.Requests;
+using MapsterMapper;
 namespace eCommerce.Services
 {
-    public class ProductService : IProductService
+    public class ProductService : BaseCRUDService<ProductResponse, ProductSearchObject, Database.Product, ProductInsertRequest, ProductUpdateRequest>, IProductService
     {
-        private readonly eCommerceDbContext _context;
-
-        public ProductService(eCommerceDbContext context)
+        public ProductService(eCommerceDbContext context, IMapper mapper) : base(context, mapper)
         {
-            _context = context;
-        }
-
-        public async Task<List<ProductResponse>> GetAsync(ProductSearchObject search)
-        {
-            var query = _context.Products.AsQueryable();
-            
-            if (!string.IsNullOrEmpty(search.Code))
-            {
-                query = query.Where(p => p.SKU.Contains(search.Code));
-            }
-            
-            if (!string.IsNullOrEmpty(search.CodeGTE))
-            {
-                query = query.Where(p => p.SKU.StartsWith(search.CodeGTE));
-            }
-            
-            if (!string.IsNullOrEmpty(search.FTS))
-            {
-                query = query.Where(p => 
-                    (p.SKU != null && p.SKU.Contains(search.FTS)) || 
-                    p.Name.Contains(search.FTS) ||
-                    p.Description.Contains(search.FTS));
-            }
-            
-            var products = await query.ToListAsync();
-            return products.Select(MapToResponse).ToList();
-        }
-
-        public async Task<ProductResponse?> GetByIdAsync(int id)
-        {
-            var product = await _context.Products.FindAsync(id);
-            return product != null ? MapToResponse(product) : null;
-        }
-
-        private ProductResponse MapToResponse(Database.Product product)
-        {
-            return new ProductResponse
-            {
-                Id = product.Id,
-                Name = product.Name,
-                Code = product.SKU ?? string.Empty
-            };
         }
     }
 }

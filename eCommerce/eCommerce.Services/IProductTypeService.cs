@@ -7,11 +7,7 @@ using eCommerce.Model.SearchObjects;
 
 namespace eCommerce.Services
 {
-    public interface IProductTypeService:IService<ProductType, ProductTypeSearchObject>
+    public interface IProductTypeService : ICRUDService<ProductTypeResponse, ProductTypeSearchObject, ProductTypeUpsertRequest, ProductTypeUpsertRequest>
     {
-       
-        Task<ProductTypeResponse> CreateAsync(ProductTypeUpsertRequest request);
-        Task<ProductTypeResponse?> UpdateAsync(int id, ProductTypeUpsertRequest request);
-        Task<bool> DeleteAsync(int id);
     }
 } 

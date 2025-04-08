@@ -5,29 +5,14 @@ using eCommerce.Services;
 using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using eCommerce.Model.Requests;
 
 namespace eCommerce.WebAPI.Controllers
 {
-    [ApiController]
-    [Route("[controller]")]
-    public class ProductController : ControllerBase
+    public class ProductController : BaseCRUDController<ProductResponse, ProductSearchObject, ProductInsertRequest, ProductUpdateRequest>
     {
-        protected readonly IProductService _productService;
-        
-        public ProductController(IProductService service) {
-            _productService = service;
-        }
-
-        [HttpGet("")]
-        public async Task<IEnumerable<ProductResponse>> Get([FromQuery]ProductSearchObject? search = null)
+        public ProductController(IProductService service) : base(service)
         {
-            return await _productService.GetAsync(search ?? new ProductSearchObject());
-        }
-
-        [HttpGet("{id}")]
-        public async Task<ProductResponse?> GetById(int id)
-        {
-            return await _productService.GetByIdAsync(id);
         }
     }
 }
