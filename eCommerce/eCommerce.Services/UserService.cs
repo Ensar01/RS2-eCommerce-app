@@ -169,5 +169,27 @@ namespace eCommerce.Services
                 LastLoginAt = user.LastLoginAt
             };
         }
+
+        public async Task<UserResponse?> AuthenticateAsync(UserLoginRequest request)
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
+            if(user==null)
+            {
+                return null;
+            }
+            if(!VerifyPassword(request.Password, user.PasswordHash, user.PasswordSalt))
+            {
+                return null;
+            }
+            return MapToResponse(user);
+        }
+
+        private bool VerifyPassword(string? password, string passwordHash, string passwordSalt)
+        {
+            var salt = Convert.FromBase64String(passwordSalt);
+            var hash = Convert.FromBase64String(passwordHash);
+            var hashBytes = new Rfc2898DeriveBytes(password, salt, Iterations).GetBytes(KeySize);
+            return hash.SequenceEqual(hashBytes);
+        }
     }
 } 

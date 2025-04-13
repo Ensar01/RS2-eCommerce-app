@@ -64,5 +64,15 @@ namespace eCommerce.WebAPI.Controllers
                 
             return NoContent();
         }
+        [HttpPost("login")]
+        public async Task<ActionResult> Login(UserLoginRequest request)
+        {
+            var user = await _userService.AuthenticateAsync(request);
+            if (user == null) 
+            {
+                return Unauthorized();
+            }
+            return Ok(user);
+        }
     }
 } 
