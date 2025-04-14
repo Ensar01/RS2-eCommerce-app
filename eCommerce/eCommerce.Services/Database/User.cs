@@ -38,5 +38,7 @@ namespace eCommerce.Services.Database
         [Phone]
         [MaxLength(20)]
         public string? PhoneNumber { get; set; }
+        public ICollection<UserRole> UserRoles { get; set; } = new List<UserRole>();
+
     }
 } 

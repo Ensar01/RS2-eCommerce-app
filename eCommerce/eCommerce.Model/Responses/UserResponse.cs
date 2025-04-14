@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace eCommerce.Model.Responses
 {
@@ -13,5 +14,7 @@ namespace eCommerce.Model.Responses
         public DateTime CreatedAt { get; set; }
         public DateTime? LastLoginAt { get; set; }
         public string? PhoneNumber { get; set; }
+        public List<RoleResponse> Roles { get; set; } = new List<RoleResponse>();
+
     }
 } 

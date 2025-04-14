@@ -102,9 +102,31 @@ namespace eCommerce.Services
                 user.PasswordSalt = Convert.ToBase64String(salt);
             }
 
+            // Add user to database first to get the ID
             _context.Users.Add(user);
             await _context.SaveChangesAsync();
-            return MapToResponse(user);
+
+            // Now assign roles if any are specified
+            if (request.RoleIds != null && request.RoleIds.Count > 0)
+            {
+                foreach (var roleId in request.RoleIds)
+                {
+                    // Check if role exists
+                    if (await _context.Roles.AnyAsync(r => r.Id == roleId))
+                    {
+                        var userRole = new UserRole
+                        {
+                            UserId = user.Id,
+                            RoleId = roleId,
+                            DateAssigned = DateTime.UtcNow
+                        };
+                        _context.UserRoles.Add(userRole);
+                    }
+                }
+                await _context.SaveChangesAsync();
+            }
+
+            return await GetUserResponseWithRolesAsync(user.Id);
         }
 
         public async Task<UserResponse?> UpdateAsync(int id, UserUpsertRequest request)
@@ -139,8 +161,32 @@ namespace eCommerce.Services
                 user.PasswordSalt = Convert.ToBase64String(salt);
             }
             
+            // Update roles
+            // First, remove all existing roles
+            var existingUserRoles = await _context.UserRoles.Where(ur => ur.UserId == id).ToListAsync();
+            _context.UserRoles.RemoveRange(existingUserRoles);
+            
+            // Then add the new roles
+            if (request.RoleIds != null && request.RoleIds.Count > 0)
+            {
+                foreach (var roleId in request.RoleIds)
+                {
+                    // Check if role exists
+                    if (await _context.Roles.AnyAsync(r => r.Id == roleId))
+                    {
+                        var userRole = new UserRole
+                        {
+                            UserId = user.Id,
+                            RoleId = roleId,
+                            DateAssigned = DateTime.UtcNow
+                        };
+                        _context.UserRoles.Add(userRole);
+                    }
+                }
+            }
+            
             await _context.SaveChangesAsync();
-            return MapToResponse(user);
+            return await GetUserResponseWithRolesAsync(user.Id);
         }
 
         public async Task<bool> DeleteAsync(int id)
@@ -170,21 +216,66 @@ namespace eCommerce.Services
             };
         }
 
-        public async Task<UserResponse?> AuthenticateAsync(UserLoginRequest request)
+        // New method to get user with roles
+        private async Task<UserResponse> GetUserResponseWithRolesAsync(int userId)
         {
-            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username == request.Username);
-            if(user==null)
-            {
-                return null;
-            }
-            if(!VerifyPassword(request.Password, user.PasswordHash, user.PasswordSalt))
-            {
-                return null;
-            }
-            return MapToResponse(user);
+            var user = await _context.Users
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Id == userId);
+            
+            if (user == null)
+                throw new InvalidOperationException("User not found");
+            
+            var response = MapToResponse(user);
+            
+            // Add roles to the response
+            response.Roles = user.UserRoles
+                .Where(ur => ur.Role.IsActive)
+                .Select(ur => new RoleResponse
+                {
+                    Id = ur.Role.Id,
+                    Name = ur.Role.Name,
+                    Description = ur.Role.Description
+                })
+                .ToList();
+            
+            return response;
         }
 
-        private bool VerifyPassword(string? password, string passwordHash, string passwordSalt)
+        public async Task<UserResponse?> AuthenticateAsync(UserLoginRequest request)
+        {
+            var user = await _context.Users
+                .Include(u => u.UserRoles)
+                .ThenInclude(ur => ur.Role)
+                .FirstOrDefaultAsync(u => u.Username == request.Username);
+            
+            if (user == null)
+                return null;
+
+            if (!VerifyPassword(request.Password!, user.PasswordHash, user.PasswordSalt))
+                return null;
+
+            // Update last login time
+            user.LastLoginAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+
+            var response = MapToResponse(user);
+            
+            // Add roles to the response
+            response.Roles = user.UserRoles
+                .Where(ur => ur.Role.IsActive)
+                .Select(ur => new RoleResponse
+                {
+                    Id = ur.Role.Id,
+                    Name = ur.Role.Name,
+                    Description = ur.Role.Description
+                })
+                .ToList();
+            
+            return response;
+        }
+        private bool VerifyPassword(string password, string passwordHash, string passwordSalt)
         {
             var salt = Convert.FromBase64String(passwordSalt);
             var hash = Convert.FromBase64String(passwordHash);

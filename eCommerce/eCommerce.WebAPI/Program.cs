@@ -1,7 +1,10 @@
 using eCommerce.Services;
 using eCommerce.Services.Database;
+using eCommerce.WebAPI.Filters;
 using Mapster;
 using MapsterMapper;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,11 +18,36 @@ builder.Services.AddMapster();
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "Server=localhost;Database=eCommerceDb;Trusted_Connection=True;MultipleActiveResultSets=true;TrustServerCertificate=True";
 builder.Services.AddDatabaseServices(connectionString);
 
+builder.Services.AddAuthentication("BasicAuthentication")
+    .AddScheme<AuthenticationSchemeOptions, BasicAuthenticationHandler>("BasicAuthentication", null);
 builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
+builder.Services.AddSwaggerGen(c =>
+{
+    c.AddSecurityDefinition("BasicAuthentication", new OpenApiSecurityScheme
+    {
+        In = ParameterLocation.Header,
+        Description = "Basic Authentication header using the Bearer scheme.",
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "basic"
+    });
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "BasicAuthentication"
+                }
+            },
+            new string[] {}
+        }
+    });
+});
 var app = builder.Build();
 
 // Ensure database is created
