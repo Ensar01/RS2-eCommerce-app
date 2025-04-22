@@ -8,6 +8,8 @@ using eCommerce.Model.SearchObjects;
 using System.Linq;
 using System;
 using MapsterMapper;
+using eCommerce.Model.Exceptions;
+using Microsoft.Extensions.Logging;
 
 namespace eCommerce.Services
 {
@@ -15,10 +17,12 @@ namespace eCommerce.Services
             BaseCRUDService<ProductTypeResponse, ProductTypeSearchObject, ProductType, ProductTypeUpsertRequest, ProductTypeUpsertRequest>, IProductTypeService
     {
         private readonly eCommerceDbContext _context;
+        private readonly ILogger<ProductTypeService> _logger;
 
-        public ProductTypeService(eCommerceDbContext context, IMapper mapper) : base(context, mapper)
+        public ProductTypeService(eCommerceDbContext context, IMapper mapper, ILogger<ProductTypeService> logger) : base(context, mapper)
         {
             _context = context;
+            _logger = logger;
         }
 
         protected override IQueryable<ProductType> ApplyFilter(IQueryable<ProductType> query, ProductTypeSearchObject search)
@@ -33,6 +37,12 @@ namespace eCommerce.Services
                 query = query.Where(pt => pt.Name.Contains(search.FTS) || pt.Description.Contains(search.FTS));
             }
             return query;
+        }
+        protected override Task BeforeInsert(ProductType entity, ProductTypeUpsertRequest request)
+        {
+            _logger.LogInformation($"User is trying to add product type {request.Name}");
+            throw new Exception("Nije dozvoljeno");
+            return base.BeforeInsert(entity, request);
         }
     }
 } 
