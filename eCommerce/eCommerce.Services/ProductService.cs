@@ -26,5 +26,9 @@ namespace eCommerce.Services
 
             return query;
         }
+        public override Task<ProductResponse> CreateAsync(ProductInsertRequest request)
+        {
+            return base.CreateAsync(request);
+        }
     }
 }
