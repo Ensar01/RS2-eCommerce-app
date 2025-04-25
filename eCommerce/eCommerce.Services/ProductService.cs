@@ -10,12 +10,15 @@ using System.Text;
 using System.Threading.Tasks;
 using eCommerce.Model.Requests;
 using MapsterMapper;
+using eCommerce.Services.ProductStateMachine;
 namespace eCommerce.Services
 {
     public class ProductService : BaseCRUDService<ProductResponse, ProductSearchObject, Database.Product, ProductInsertRequest, ProductUpdateRequest>, IProductService
     {
-        public ProductService(eCommerceDbContext context, IMapper mapper) : base(context, mapper)
+        protected readonly BaseProductState _baseProductState;
+        public ProductService(eCommerceDbContext context, IMapper mapper, BaseProductState baseProductState) : base(context, mapper)
         {
+            _baseProductState = baseProductState;
         }
         protected override IQueryable<Database.Product> ApplyFilter(IQueryable<Database.Product> query, ProductSearchObject search)
         {
@@ -26,9 +29,17 @@ namespace eCommerce.Services
 
             return query;
         }
-        public override Task<ProductResponse> CreateAsync(ProductInsertRequest request)
+        public override async Task<ProductResponse> CreateAsync(ProductInsertRequest request)
         {
-            return base.CreateAsync(request);
+            var baseState = _baseProductState.GetProductState("InitialProductState");
+            var result = await baseState.CreateAsync(request);
+
+            return result;
+            //return base.CreateAsync(request);
+        }
+        public override Task<ProductResponse?> UpdateAsync(int id, ProductUpdateRequest request)
+        {
+            return base.UpdateAsync(id, request);
         }
     }
 }
