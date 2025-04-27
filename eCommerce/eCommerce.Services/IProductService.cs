@@ -12,5 +12,7 @@ namespace eCommerce.Services
 {
     public interface IProductService : ICRUDService<ProductResponse, ProductSearchObject, ProductInsertRequest, ProductUpdateRequest>
     {
+        Task<ProductResponse> ActivateAsync(int id);
+        Task<ProductResponse> DeactivateAsync(int id);
     }
 }

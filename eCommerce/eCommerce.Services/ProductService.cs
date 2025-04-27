@@ -37,9 +37,27 @@ namespace eCommerce.Services
             return result;
             //return base.CreateAsync(request);
         }
-        public override Task<ProductResponse?> UpdateAsync(int id, ProductUpdateRequest request)
+        public override async Task<ProductResponse?> UpdateAsync(int id, ProductUpdateRequest request)
         {
-            return base.UpdateAsync(id, request);
+            var entity = await _context.Products.FindAsync(id);
+            var baseState = _baseProductState.GetProductState(entity.ProductState);
+            return await baseState.UpdateAsync(id, request);
+            //return base.UpdateAsync(id, request);
+        }
+
+        public async Task<ProductResponse> ActivateAsync(int id)
+        {
+            var entity = await _context.Products.FindAsync(id);
+            var baseState = _baseProductState.GetProductState(entity.ProductState);
+
+            return await baseState.ActivateAsync(id);
+        }
+
+        public async Task<ProductResponse> DeactivateAsync(int id)
+        {
+            var entity = await _context.Products.FindAsync(id);
+            var baseState = _baseProductState.GetProductState(entity.ProductState);
+            return await baseState.DeactivateAsync(id);
         }
     }
 }
