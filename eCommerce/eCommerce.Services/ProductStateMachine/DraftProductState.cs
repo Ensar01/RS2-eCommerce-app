@@ -1,4 +1,6 @@
 ﻿
+using EasyNetQ;
+using eCommerce.Model.Messages;
 using eCommerce.Model.Requests;
 using eCommerce.Model.Responses;
 using eCommerce.Services.Database;
@@ -16,8 +18,18 @@ namespace eCommerce.Services.ProductStateMachine
             var entity = await _context.Products.FindAsync(id);
             _mapper.Map(request, entity);
 
+
+
             await _context.SaveChangesAsync();
-            return _mapper.Map<ProductResponse>(entity);
+
+            var bus = RabbitHutch.CreateBus("host=localhost");
+            var response = _mapper.Map<ProductResponse>(entity);
+            var productUpdated = new ProductUpdated
+            {
+               Product = response
+            };
+            await bus.PubSub.PublishAsync(productUpdated);
+            return response;
         }
         public override async Task<ProductResponse> ActivateAsync(int id)
         {
