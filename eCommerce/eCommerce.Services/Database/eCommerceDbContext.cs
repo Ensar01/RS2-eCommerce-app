@@ -155,6 +155,8 @@ namespace eCommerce.Services.Database
             modelBuilder.Entity<UnitOfMeasure>()
                 .HasIndex(u => u.Abbreviation)
                 .IsUnique();
+
+            // Configure Role entity
             modelBuilder.Entity<Role>()
                 .HasIndex(r => r.Name)
                 .IsUnique();
